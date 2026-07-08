@@ -1,5 +1,7 @@
 const express = require('express');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const stealth = require('puppeteer-extra-plugin-stealth')();
+chromium.use(stealth);
 const cron = require('node-cron');
 const jwt = require('jsonwebtoken');
 const inicializarBanco = require('./database');
@@ -75,13 +77,20 @@ async function checarProcessos(usuarioSessao = null, processoId = null) {
     if (progressoTotal === 0) { varreduraEmAndamento = false; return; }
     
     let navegador;
-    try {
-        navegador = await chromium.launch({ headless: true }); 
-        const pagina = await navegador.newPage();
-        await pagina.route('**/*', (route) => {
-            if (['image', 'font', 'media', 'stylesheet'].includes(route.request().resourceType())) route.abort();
-            else route.continue();
-        });
+        try {
+            navegador = await chromium.launch({ headless: true });
+            
+            const contexto = await navegador.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                viewport: { width: 1366, height: 768 }
+            });
+
+            const pagina = await contexto.newPage();
+
+            await pagina.route('**/*', (route) => {
+                if (['image', 'font', 'media', 'stylesheet'].includes(route.request().resourceType())) route.abort();
+                else route.continue();
+            });
 
         for (let processo of processosAlvo) {
             progressoAtual++;
