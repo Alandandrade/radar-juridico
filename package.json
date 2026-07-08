@@ -1,0 +1,20 @@
+{
+  "name": "meu-saas-juridico",
+  "version": "1.0.0",
+  "description": "Monitoramento de processos",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "node-cron": "^3.0.3",
+    "playwright": "^1.61.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^6.0.1"
+  }
+}

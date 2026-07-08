@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Administrador SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        const token = localStorage.getItem('tokenSessao');
+        const nivel = localStorage.getItem('usuarioLogado');
+        if (!token || nivel !== 'admin') window.location.href = '/login.html';
+        function fazerLogout() { localStorage.clear(); window.location.href = '/login.html'; }
+        function obterHeaders() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }; }
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center bg-gray-800 p-6 rounded-xl shadow-md border border-gray-700 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-purple-400">Radar Jurídico • Admin</h1>
+                <p class="text-sm text-gray-400">PCP do Software e Controle de Assinantes</p>
+            </div>
+            <button onclick="fazerLogout()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition">Sair do Painel</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg flex items-center gap-4 hover:border-blue-500 transition cursor-default">
+                <div class="bg-blue-900/50 p-4 rounded-lg text-blue-400 text-3xl">👥</div>
+                <div>
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Carteira de Clientes</p>
+                    <h3 class="text-2xl font-black text-white leading-none" id="kpi-usuarios">0</h3>
+                    <p class="text-[11px] text-gray-500 mt-1.5 font-medium"><span id="kpi-ativos" class="text-emerald-400 font-bold">0</span> ativos | <span id="kpi-inativos" class="text-rose-400 font-bold">0</span> bloqueados</p>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg flex items-center gap-4 hover:border-purple-500 transition cursor-default">
+                <div class="bg-purple-900/50 p-4 rounded-lg text-purple-400 text-3xl">⚙️</div>
+                <div>
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Carga do Robô (PCP)</p>
+                    <h3 class="text-2xl font-black text-white leading-none"><span id="kpi-processos">0</span></h3>
+                    <p class="text-[11px] text-gray-500 mt-1.5 font-medium">Processos monitorados no BD</p>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg flex items-center gap-4 transition cursor-default" id="kpi-card-saude">
+                <div class="bg-emerald-900/50 p-4 rounded-lg text-emerald-400 text-3xl" id="kpi-icon-saude">❤️</div>
+                <div>
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Saúde da Automação</p>
+                    <h3 class="text-2xl font-black text-white leading-none"><span id="kpi-sucesso">100</span>%</h3>
+                    <p class="text-[11px] text-gray-500 mt-1.5 font-medium"><span id="kpi-erros" class="font-bold">0</span> falhas de Tribunal detectadas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- 🚀 NOVO: Controles Gerais do Sistema -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow col-span-1 h-fit">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">🛠️ Engenharia do Sistema</h2>
+                
+                <div class="mb-5 p-3 rounded-lg border border-gray-700 bg-gray-900 flex justify-between items-center">
+                    <div>
+                        <div class="text-sm font-bold text-white">Modo Manutenção</div>
+                        <div class="text-[11px] text-gray-500">Bloqueia acesso de clientes</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="confManutencao" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                </div>
+
+                <label class="block text-xs text-gray-400 font-bold mb-1 uppercase">Mural de Avisos Global (Banner)</label>
+                <textarea id="confAviso" rows="2" placeholder="Ex: e-Proc fora do ar..." class="w-full bg-gray-950 border border-gray-700 p-2.5 rounded-lg mb-4 text-sm text-white outline-none resize-none"></textarea>
+
+                <label class="block text-xs text-gray-400 font-bold mb-2 uppercase">Horários do Robô (Varredura Automática)</label>
+                <div class="flex gap-2 mb-6">
+                    <input type="time" id="confHora1" class="w-full bg-gray-950 border border-gray-700 p-2 rounded-lg text-sm text-white outline-none text-center">
+                    <input type="time" id="confHora2" class="w-full bg-gray-950 border border-gray-700 p-2 rounded-lg text-sm text-white outline-none text-center">
+                    <input type="time" id="confHora3" class="w-full bg-gray-950 border border-gray-700 p-2 rounded-lg text-sm text-white outline-none text-center">
+                </div>
+
+                <button onclick="salvarConfiguracoesGlobais()" id="btnSalvarConfig" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Atualizar Sistema</button>
+            </div>
+
+            <!-- Criar Conta -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow col-span-2 h-fit">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">👤 Criar Nova Conta Cliente</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 font-bold mb-1 uppercase">Usuário</label>
+                        <input type="text" id="novoUsuario" class="w-full bg-gray-950 border border-gray-700 p-2.5 rounded-lg mb-4 text-sm text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 font-bold mb-1 uppercase">Senha</label>
+                        <input type="text" id="novaSenha" class="w-full bg-gray-950 border border-gray-700 p-2.5 rounded-lg mb-4 text-sm text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 font-bold mb-1 uppercase">Plano</label>
+                        <select id="novoTipo" class="w-full bg-gray-950 border border-gray-700 p-2.5 rounded-lg mb-4 text-sm text-white outline-none">
+                            <option value="demo">Demo</option><option value="pro">Pró</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 font-bold mb-1 uppercase">Limite</label>
+                        <input type="number" id="novoLimite" value="5" class="w-full bg-gray-950 border border-gray-700 p-2.5 rounded-lg mb-6 text-sm text-white outline-none">
+                    </div>
+                </div>
+                <button onclick="cadastrarUsuario()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Ativar Conta Cliente</button>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow overflow-x-auto">
+            <h2 class="text-lg font-bold text-white mb-4">👥 Clientes Registrados</h2>
+            <table class="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                    <tr class="border-b border-gray-700 text-xs text-gray-400 uppercase bg-gray-800">
+                        <th class="p-3">Usuário</th>
+                        <th class="p-3">Processos</th>
+                        <th class="p-3">Plano</th>
+                        <th class="p-3">Financeiro</th>
+                        <th class="p-3 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-usuarios" class="text-sm"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Logs mantido -->
+    <div id="modalLogs" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">📜 Histórico de Auditoria: <span id="nomeUsuarioLog" class="text-purple-400"></span></h2>
+                <button onclick="fecharLogs()" class="text-gray-400 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            <div class="overflow-y-auto flex-1 bg-gray-900 rounded border border-gray-700 p-2">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead>
+                        <tr class="border-b border-gray-700 text-gray-500 bg-gray-950">
+                            <th class="p-2">Data / Hora</th><th class="p-2">Ação</th><th class="p-2 w-1/2">Detalhes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-logs-corpo"></tbody>
+                </table>
+                <div id="msgSemLogs" class="text-center p-6 text-gray-500 hidden">Nenhuma atividade registrada ainda.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carregar configurações globais
+        async function carregarConfiguracoesGlobais() {
+            const res = await fetch('/api/admin/config', { headers: obterHeaders() });
+            if (res.ok) {
+                const config = await res.json();
+                document.getElementById('confManutencao').checked = config.manutencao === 1;
+                document.getElementById('confAviso').value = config.aviso_geral || '';
+                document.getElementById('confHora1').value = config.hora_1;
+                document.getElementById('confHora2').value = config.hora_2;
+                document.getElementById('confHora3').value = config.hora_3;
+            }
+        }
+
+        async function salvarConfiguracoesGlobais() {
+            const btn = document.getElementById('btnSalvarConfig');
+            btn.innerText = 'Atualizando...';
+            const payload = {
+                manutencao: document.getElementById('confManutencao').checked ? 1 : 0,
+                aviso_geral: document.getElementById('confAviso').value.trim(),
+                hora_1: document.getElementById('confHora1').value,
+                hora_2: document.getElementById('confHora2').value,
+                hora_3: document.getElementById('confHora3').value
+            };
+            await fetch('/api/admin/config', { method: 'PUT', headers: obterHeaders(), body: JSON.stringify(payload) });
+            btn.innerText = 'Atualizado com Sucesso!';
+            setTimeout(() => btn.innerText = 'Atualizar Sistema', 2000);
+        }
+
+        async function carregarDashboard() {
+            try {
+                const response = await fetch('/api/admin/dashboard', { headers: obterHeaders() });
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('kpi-usuarios').innerText = data.totalUsuarios;
+                    document.getElementById('kpi-ativos').innerText = data.usuariosAtivos;
+                    document.getElementById('kpi-inativos').innerText = data.usuariosInativos;
+                    document.getElementById('kpi-processos').innerText = data.totalProcessos;
+                    
+                    const elSucesso = document.getElementById('kpi-sucesso');
+                    const elErros = document.getElementById('kpi-erros');
+                    const cardSaude = document.getElementById('kpi-card-saude');
+                    const iconSaude = document.getElementById('kpi-icon-saude');
+                    
+                    elSucesso.innerText = data.taxaSucesso;
+                    elErros.innerText = data.erros;
+                    if (data.taxaSucesso < 80) { cardSaude.className = "bg-gray-800 rounded-xl p-5 border border-rose-500 shadow-lg shadow-rose-900/20 flex items-center gap-4 transition cursor-default"; iconSaude.className = "bg-rose-900/50 p-4 rounded-lg text-rose-400 text-3xl"; iconSaude.innerText = '⚠️'; elSucesso.className = "text-rose-400"; } 
+                    else if (data.taxaSucesso < 95) { cardSaude.className = "bg-gray-800 rounded-xl p-5 border border-yellow-500 shadow-lg shadow-yellow-900/20 flex items-center gap-4 transition cursor-default"; iconSaude.className = "bg-yellow-900/50 p-4 rounded-lg text-yellow-400 text-3xl"; iconSaude.innerText = '⚡'; elSucesso.className = "text-yellow-400"; } 
+                    else { cardSaude.className = "bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg hover:border-emerald-500 flex items-center gap-4 transition cursor-default"; iconSaude.className = "bg-emerald-900/50 p-4 rounded-lg text-emerald-400 text-3xl"; iconSaude.innerText = '❤️'; elSucesso.className = "text-white"; }
+                }
+            } catch(e) {}
+        }
+
+        async function carregarUsuarios() {
+            try {
+                const response = await fetch('/api/admin/usuarios', { headers: obterHeaders() });
+                if (!response.ok) return fazerLogout();
+                const users = await response.json();
+                const tbody = document.getElementById('tabela-usuarios');
+                tbody.innerHTML = '';
+                users.forEach(u => {
+                    const statusFinanceiro = u.mensalidade_em_dia === 1;
+                    tbody.innerHTML += `
+                        <tr class="border-b border-gray-700/60 hover:bg-gray-750/30 transition">
+                            <td class="p-3 font-semibold text-white">${u.usuario}<div class="text-[10px] text-gray-500 font-medium mt-0.5">Criado: ${u.data_cadastro || 'Antigo'}</div></td>
+                            <td class="p-3 text-center font-bold text-purple-400">${u.total_processos}</td>
+                            <td class="p-3">
+                                <div class="flex flex-col gap-1.5">
+                                    <select onchange="salvarMudanca(${u.id}, this, 'tipo', ${u.limite_processos}, ${u.mensalidade_em_dia})" class="bg-gray-900 border border-gray-700 text-xs text-white p-1 rounded outline-none"><option value="demo" ${u.tipo_conta === 'demo' ? 'selected' : ''}>Demo</option><option value="pro" ${u.tipo_conta === 'pro' ? 'selected' : ''}>Pró</option></select>
+                                    <div class="flex items-center gap-1 text-[11px] text-gray-400"><span>Limite:</span><input type="number" value="${u.limite_processos}" onchange="salvarMudanca(${u.id}, this, 'limite', '${u.tipo_conta}', ${u.mensalidade_em_dia})" class="bg-gray-900 border border-gray-700 w-12 text-center text-white rounded p-0.5"></div>
+                                </div>
+                            </td>
+                            <td class="p-3"><select onchange="salvarMudanca(${u.id}, this, 'financeiro', ${u.limite_processos}, '${u.tipo_conta}')" class="text-xs font-bold p-1 rounded border outline-none ${statusFinanceiro ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-rose-950 text-rose-400 border-rose-800'}"><option value="1" ${statusFinanceiro ? 'selected' : ''}>🟢 EM DIA</option><option value="0" ${!statusFinanceiro ? 'selected' : ''}>🔴 BLOQUEADO</option></select></td>
+                            <td class="p-3 text-right whitespace-nowrap">
+                                <button onclick="abrirLogs('${u.usuario}')" class="bg-gray-700 text-gray-300 hover:bg-gray-600 px-2 py-1.5 rounded text-xs font-bold mr-1">📜 Logs</button>
+                                <button onclick="acessarContaComo('${u.usuario}')" class="bg-blue-900/30 text-blue-400 border border-blue-800/50 hover:bg-blue-900 hover:text-white px-2 py-1 rounded text-xs font-bold mr-1">👀 Ver</button>
+                                <button onclick="excluirUsuario(${u.id}, '${u.usuario}')" class="bg-red-900/30 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white px-2 py-1 rounded text-xs font-bold">Excluir</button>
+                            </td>
+                        </tr>`;
+                });
+            } catch(e) {}
+        }
+
+        async function cadastrarUsuario() {
+            const usuario = document.getElementById('novoUsuario').value.trim(); const senha = document.getElementById('novaSenha').value.trim(); const tipo_conta = document.getElementById('novoTipo').value; const limite_processos = parseInt(document.getElementById('novoLimite').value);
+            if(!usuario || !senha) return alert("Preencha usuário e senha!");
+            const response = await fetch('/api/admin/usuarios', { method: 'POST', headers: obterHeaders(), body: JSON.stringify({ usuario, senha, tipo_conta, limite_processos }) });
+            if(response.ok) { document.getElementById('novoUsuario').value = ''; document.getElementById('novaSenha').value = ''; carregarUsuarios(); carregarDashboard(); } 
+            else { alert((await response.json()).message); }
+        }
+
+        async function salvarMudanca(id, el, tipoAlteracao, parametroA, parametroB) {
+            let tipo_conta, limite_processos, mensalidade_em_dia;
+            if (tipoAlteracao === 'tipo') { tipo_conta = el.value; limite_processos = parametroA; mensalidade_em_dia = parametroB; } else if (tipoAlteracao === 'limite') { tipo_conta = parametroA; limite_processos = parseInt(el.value); mensalidade_em_dia = parametroB; } else if (tipoAlteracao === 'financeiro') { tipo_conta = parametroB; limite_processos = parametroA; mensalidade_em_dia = parseInt(el.value); }
+            await fetch(`/api/admin/usuarios/${id}`, { method: 'PUT', headers: obterHeaders(), body: JSON.stringify({ tipo_conta, limite_processos, mensalidade_em_dia }) });
+            carregarUsuarios(); carregarDashboard();
+        }
+        async function excluirUsuario(id, nome) {
+            if (confirm(`Tem certeza que quer apagar a conta de "${nome}"?`)) { await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE', headers: obterHeaders() }); carregarUsuarios(); carregarDashboard(); }
+        }
+        async function acessarContaComo(usuarioAlvo) {
+            const response = await fetch('/api/admin/impersonate', { method: 'POST', headers: obterHeaders(), body: JSON.stringify({ usuarioAlvo }) });
+            const data = await response.json();
+            if (data.success) { localStorage.setItem('adminTokenBackup', localStorage.getItem('tokenSessao')); localStorage.setItem('adminUsuarioBackup', localStorage.getItem('usuarioLogado')); localStorage.setItem('tokenSessao', data.token); localStorage.setItem('usuarioLogado', data.usuario); window.location.href = '/index.html'; }
+        }
+        async function abrirLogs(usuarioAlvo) {
+            document.getElementById('nomeUsuarioLog').innerText = usuarioAlvo; document.getElementById('modalLogs').classList.remove('hidden'); document.getElementById('tabela-logs-corpo').innerHTML = '<tr><td colspan="3" class="text-center p-4">Carregando...</td></tr>'; document.getElementById('msgSemLogs').classList.add('hidden');
+            const logs = await (await fetch(`/api/admin/logs/${usuarioAlvo}`, { headers: obterHeaders() })).json();
+            const tbody = document.getElementById('tabela-logs-corpo'); tbody.innerHTML = '';
+            if (logs.length === 0) document.getElementById('msgSemLogs').classList.remove('hidden');
+            else { logs.forEach(log => {
+                let cor = "text-gray-300"; if (log.acao.includes('EXCLUIR')) cor = "text-red-400 font-bold"; if (log.acao.includes('CRIAR')) cor = "text-emerald-400 font-bold"; if (log.acao.includes('LOGIN')) cor = "text-blue-400";
+                tbody.innerHTML += `<tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="p-2 whitespace-nowrap">${log.data_hora}</td><td class="p-2 ${cor}">${log.acao}</td><td class="p-2 text-gray-400">${log.detalhes}</td></tr>`;
+            });}
+        }
+        function fecharLogs() { document.getElementById('modalLogs').classList.add('hidden'); }
+
+        carregarConfiguracoesGlobais(); carregarDashboard(); carregarUsuarios();
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Radar Jurídico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm border">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Radar Jurídico</h2>
+        
+        <label class="block text-sm text-gray-600 mb-1">Usuário</label>
+        <input type="text" id="usuario" class="w-full border p-2 mb-4 rounded focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50">
+        
+        <label class="block text-sm text-gray-600 mb-1">Senha</label>
+        <input type="password" id="senha" class="w-full border p-2 mb-6 rounded focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50">
+        
+        <button onclick="fazerLogin()" id="btnEntrar" class="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded hover:bg-purple-700 transition">Entrar</button>
+    </div>
+
+    <script>
+        async function fazerLogin() {
+            const usuario = document.getElementById('usuario').value;
+            const senha = document.getElementById('senha').value;
+            const btn = document.getElementById('btnEntrar');
+            
+            btn.innerText = "Verificando...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario, senha })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('usuarioLogado', data.usuario);
+                    localStorage.setItem('tokenSessao', data.token);
+                    
+                    // 🚀 CORREÇÃO: Se for admin, vai direto pro painel administrativo!
+                    if (data.nivel_acesso === 'admin') {
+                        window.location.href = '/admin.html';
+                    } else {
+                        window.location.href = '/index.html';
+                    }
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                alert("Erro ao conectar com o servidor.");
+            }
+            
+            btn.innerText = "Entrar";
+            btn.disabled = false;
+        }
+
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') fazerLogin();
+        });
+    </script>
+</body>
+</html>

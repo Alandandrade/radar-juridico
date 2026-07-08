@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar Jurídico - Monitoramento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        const usuarioAtual = localStorage.getItem('usuarioLogado');
+        const token = localStorage.getItem('tokenSessao'); 
+        if (!usuarioAtual || !token) window.location.href = '/login.html';
+        function fazerLogout() { localStorage.clear(); window.location.href = '/login.html'; }
+        function obterHeaders() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }; }
+        
+        // 🚀 LÓGICA DO MURAL DE AVISOS (Verifica sem precisar de token para evitar bloqueios)
+        async function verificarAvisoGeral() {
+            try {
+                const res = await fetch('/api/config/public');
+                const data = await res.json();
+                if (data.aviso_geral && data.aviso_geral.trim() !== '') {
+                    document.getElementById('textoMuralAviso').innerText = data.aviso_geral;
+                    document.getElementById('bannerAvisoGeral').classList.remove('hidden');
+                }
+            } catch (e) {}
+        }
+        verificarAvisoGeral();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- 🚀 FAIXA DO MURAL DE AVISOS -->
+    <div id="bannerAvisoGeral" class="hidden bg-blue-600 text-white text-center py-2.5 px-4 shadow-md sticky top-0 z-40">
+        <span class="font-bold text-sm flex justify-center items-center gap-2">📢 <span id="textoMuralAviso"></span></span>
+    </div>
+
+    <!-- Faixa do Modo Suporte -->
+    <div id="bannerSuporte" class="hidden bg-red-600 text-white text-center py-2 px-4 shadow-md flex justify-center items-center gap-4 sticky top-0 z-50">
+        <span class="font-bold text-sm tracking-wide">⚠️ MODO DE SUPORTE ATIVADO</span>
+        <button onclick="encerrarSuporte()" class="bg-white text-red-700 font-extrabold px-4 py-1.5 rounded text-xs shadow hover:bg-gray-100 transition">Voltar ao Painel Admin</button>
+    </div>
+
+    <div class="p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div class="w-full md:w-auto text-center md:text-left">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Meus Processos</h1>
+                    <p class="text-gray-500 text-sm" id="boasVIndas"></p>
+                </div>
+
+                <div class="w-full md:max-w-md flex-1">
+                    <div class="relative">
+                        <input type="text" id="campoBusca" oninput="renderizarTabela()" placeholder="Buscar por cliente, classe..." class="w-full border border-gray-300 pl-10 pr-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-50 text-sm transition">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">🔍</div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-2 md:gap-3">
+                    <button id="btnVarredura" onclick="dispararVarredura()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition min-w-[150px]">Fazer Varredura</button>
+                    <button onclick="abrirModalCadastro()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition">+ Novo Processo</button>
+                    
+                    <!-- 🚀 BOTÃO DE EXPORTAR RELATÓRIO -->
+                    <button onclick="baixarRelatorio()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow text-sm flex items-center gap-1 transition">📥 Excel</button>
+                    
+                    <button onclick="fazerLogout()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition">Sair</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-x-auto border">
+                <table class="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="bg-gray-800 text-white select-none text-xs md:text-sm">
+                            <th onclick="configurarOrdenacao('nome')" class="p-3 font-semibold uppercase cursor-pointer hover:bg-gray-700 transition">Cliente <span id="sort-nome">↕️</span></th>
+                            <th onclick="configurarOrdenacao('classeAcao')" class="p-3 font-semibold uppercase cursor-pointer hover:bg-gray-700 transition">Classe <span id="sort-classeAcao">↕️</span></th>
+                            <th onclick="configurarOrdenacao('numero')" class="p-3 font-semibold uppercase cursor-pointer hover:bg-gray-700 transition">Nº Processo <span id="sort-numero">↕️</span></th>
+                            <th onclick="configurarOrdenacao('dataUltimaMovimentacao')" class="p-3 font-semibold uppercase cursor-pointer hover:bg-gray-700 transition">Última Mov. <span id="sort-dataUltimaMovimentacao">↕️</span></th>
+                            <th onclick="configurarOrdenacao('ultimaVarredura')" class="p-3 font-semibold uppercase cursor-pointer hover:bg-gray-700 transition">Última Varredura <span id="sort-ultimaVarredura">↕️</span></th>
+                            <th class="p-3 font-semibold uppercase text-center">Agenda / Prazos</th>
+                            <th onclick="configurarOrdenacao('descricaoMovimentacao')" class="p-3 font-semibold uppercase cursor-pointer hover:bg-gray-700 transition w-[250px]">Descrição do Tribunal <span id="sort-descricaoMovimentacao">↕️</span></th>
+                            <th class="p-3 font-semibold uppercase text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-processos"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais omitidos para manter tamanho, SÃO EXATAMENTE OS MESMOS ANTERIORES (Tarefa, Cadastro, Editar) -->
+    <div id="modalTarefa" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl"><h2 class="text-xl font-bold mb-4 text-gray-800">Agendar Compromisso</h2><input type="hidden" id="tarefaProcessoId"><label class="block text-sm text-gray-700 font-bold mb-1">Data e Hora</label><input type="datetime-local" id="tarefaData" class="w-full border p-2 mb-3 rounded focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50"><label class="block text-sm text-gray-700 font-bold mb-1">Descrição</label><textarea id="tarefaTexto" rows="3" class="w-full border p-2 mb-3 rounded focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50 resize-none"></textarea><div class="bg-red-50 p-3 rounded border border-red-100 mb-5"><label class="block text-sm text-red-800 font-bold mb-1 flex items-center gap-1">⏰ Alerta vermelho na tela?</label><input type="datetime-local" id="tarefaAlerta" class="w-full border border-red-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-red-600 bg-white"></div><div class="flex justify-between mt-2"><button onclick="removerTarefa()" class="bg-gray-100 text-red-600 border border-red-200 px-4 py-2 rounded font-bold transition text-sm">Remover</button><div class="flex gap-2"><button onclick="fecharModalTarefa()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded font-semibold text-sm">Cancelar</button><button onclick="salvarTarefa()" class="bg-purple-600 text-white px-4 py-2 rounded font-bold transition text-sm">Salvar</button></div></div></div></div>
+    <div id="modalCadastro" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-40"><div class="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl"><h2 class="text-xl font-bold mb-4">Novo Processo</h2><input type="text" id="nomeCliente" placeholder="Nome do Cliente" class="w-full border p-2 mb-3 rounded focus:ring-2 focus:ring-blue-600 outline-none"><div class="flex gap-2 mb-3"><input type="text" id="telefoneCliente" placeholder="WhatsApp (Opcional)" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-600 outline-none"><button type="button" onclick="abrirContatosNativos('telefoneCliente')" class="bg-gray-200 px-4 rounded border hover:bg-gray-300">📱</button></div><input type="url" id="linkProcesso" placeholder="Link do Processo" class="w-full border p-2 mb-4 rounded focus:ring-2 focus:ring-blue-600 outline-none"><div class="flex justify-end gap-2"><button onclick="fecharModalCadastro()" class="bg-gray-300 px-4 py-2 rounded font-semibold hover:bg-gray-400">Cancelar</button><button id="btnSalvarProcesso" onclick="salvarProcesso()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Salvar</button></div></div></div>
+    <div id="modalEditar" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-40"><div class="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl"><h2 class="text-xl font-bold mb-4">Editar Processo</h2><input type="hidden" id="editId"><input type="text" id="editNome" class="w-full border p-2 mb-3 rounded"><div class="flex gap-2 mb-3"><input type="text" id="editTelefone" class="w-full border p-2 rounded"><button type="button" onclick="abrirContatosNativos('editTelefone')" class="bg-gray-200 px-4 rounded border">📱</button></div><input type="url" id="editUrl" class="w-full border p-2 mb-6 rounded"><div class="flex justify-between mt-2"><button onclick="excluirProcesso()" class="bg-red-500 text-white px-4 py-2 rounded font-bold hover:bg-red-600">Excluir</button><div class="flex gap-2"><button onclick="fecharModalEditar()" class="bg-gray-300 px-4 py-2 rounded font-semibold hover:bg-gray-400">Cancelar</button><button onclick="salvarEdicao()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Salvar</button></div></div></div></div>
+
+    <script>
+        document.getElementById('boasVIndas').innerText = `Bem-vindo, ${usuarioAtual}.`;
+        const adminBackup = localStorage.getItem('adminTokenBackup');
+        if (adminBackup) document.getElementById('bannerSuporte').classList.remove('hidden');
+        function encerrarSuporte() { localStorage.setItem('tokenSessao', localStorage.getItem('adminTokenBackup')); localStorage.setItem('usuarioLogado', localStorage.getItem('adminUsuarioBackup')); localStorage.removeItem('adminTokenBackup'); localStorage.removeItem('adminUsuarioBackup'); window.location.href = '/admin.html'; }
+
+        let memoriaProcessos = []; 
+        let colunaOrdenacao = '';  
+        let direcaoOrdenacao = 'asc'; 
+        let roboEstavaRodando = false; 
+
+        // 🚀 NOVA FUNÇÃO: Exportar Relatório em CSV (Abre direto no Excel)
+        async function baixarRelatorio() {
+            const res = await fetch('/api/processos/exportar', { headers: obterHeaders() });
+            if (res.status === 503) return alert("Sistema em manutenção.");
+            if (!res.ok) return alert("Erro ao gerar relatório");
+            
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Relatorio_Processos_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Funções padrão dos modais
+        function abrirModalTarefa(id) { const p = memoriaProcessos.find(x => x.id === id); if(!p) return; document.getElementById('tarefaProcessoId').value = p.id; document.getElementById('tarefaData').value = p.tarefa ? (p.tarefa.data || '') : ''; document.getElementById('tarefaTexto').value = p.tarefa ? (p.tarefa.texto || '') : ''; document.getElementById('tarefaAlerta').value = p.tarefa ? (p.tarefa.alerta || '') : ''; document.getElementById('modalTarefa').classList.remove('hidden'); }
+        function fecharModalTarefa() { document.getElementById('modalTarefa').classList.add('hidden'); }
+        async function salvarTarefa() { const id = document.getElementById('tarefaProcessoId').value; await fetch(`/api/processos/${id}/tarefa`, { method: 'POST', headers: obterHeaders(), body: JSON.stringify({ tarefa: { data: document.getElementById('tarefaData').value, texto: document.getElementById('tarefaTexto').value, alerta: document.getElementById('tarefaAlerta').value } }) }); fecharModalTarefa(); carregarProcessos(); }
+        async function removerTarefa() { const id = document.getElementById('tarefaProcessoId').value; await fetch(`/api/processos/${id}/tarefa`, { method: 'POST', headers: obterHeaders(), body: JSON.stringify({ tarefa: null }) }); fecharModalTarefa(); carregarProcessos(); }
+        async function abrirContatosNativos(idDoCampoTexto) { if ('contacts' in navigator && 'ContactsManager' in window) { try { const contatos = await navigator.contacts.select(['tel'], { multiple: false }); if (contatos.length > 0 && contatos[0].tel) document.getElementById(idDoCampoTexto).value = contatos[0].tel[0]; } catch (ex) {} } }
+        function abrirModalCadastro() { document.getElementById('nomeCliente').value = ''; document.getElementById('telefoneCliente').value = ''; document.getElementById('linkProcesso').value = ''; document.getElementById('modalCadastro').classList.remove('hidden'); }
+        function fecharModalCadastro() { document.getElementById('modalCadastro').classList.add('hidden'); }
+        function abrirModalEditar(id) { const p = memoriaProcessos.find(x => x.id === id); if(!p) return; document.getElementById('editId').value = p.id; document.getElementById('editNome').value = p.nome; document.getElementById('editTelefone').value = p.telefone || ''; document.getElementById('editUrl').value = p.url; document.getElementById('modalEditar').classList.remove('hidden'); }
+        function fecharModalEditar() { document.getElementById('modalEditar').classList.add('hidden'); }
+
+        async function carregarProcessos() {
+            try {
+                const response = await fetch(`/api/processos`, { headers: obterHeaders() });
+                // 🚀 LÓGICA DE MANUTENÇÃO: Avisa o usuário e o desloga de forma amigável
+                if (response.status === 503) {
+                    const errorData = await response.json();
+                    alert(errorData.message); 
+                    fazerLogout();
+                    return; 
+                }
+                if (response.status === 401 || response.status === 403) return fazerLogout(); 
+                if (response.status === 402) { alert((await response.json()).message); return; }
+                memoriaProcessos = await response.json();
+                renderizarTabela(); 
+            } catch (error) {}
+        }
+
+        async function carregarStatusRobo() {
+            try {
+                const res = await fetch('/api/status', { headers: obterHeaders() });
+                if (res.status === 503) return; // ignora se estiver em manutenção
+                const data = await res.json();
+                const btn = document.getElementById('btnVarredura');
+                if (data.varreduraEmAndamento) { roboEstavaRodando = true; btn.innerText = `⏳ Atualizando...`; btn.disabled = true; btn.classList.replace('bg-purple-600', 'bg-orange-500'); } 
+                else { if (roboEstavaRodando) { await carregarProcessos(); roboEstavaRodando = false; } btn.innerText = 'Fazer Varredura'; btn.disabled = false; btn.classList.replace('bg-orange-500', 'bg-purple-600'); }
+            } catch (e) {}
+        }
+
+        function configurarOrdenacao(coluna) { if (colunaOrdenacao === coluna) direcaoOrdenacao = direcaoOrdenacao === 'asc' ? 'desc' : (colunaOrdenacao = '', 'asc'); else { colunaOrdenacao = coluna; direcaoOrdenacao = 'asc'; } renderizarTabela(); }
+
+        function renderizarTabela() {
+            const tbody = document.getElementById('lista-processos'); const termoBusca = document.getElementById('campoBusca').value.toLowerCase(); const momentoAtual = new Date().getTime(); 
+            let processosExibicao = memoriaProcessos.filter(p => { const desc = p.tarefa?.texto || ''; return (p.nome || '').toLowerCase().includes(termoBusca) || (p.numero || '').toLowerCase().includes(termoBusca) || (p.descricaoMovimentacao || '').toLowerCase().includes(termoBusca) || desc.toLowerCase().includes(termoBusca); });
+            processosExibicao.sort((a, b) => { if (a.atualizou && !b.atualizou) return -1; if (!a.atualizou && b.atualizou) return 1; if (colunaOrdenacao) { let valA = (a[colunaOrdenacao] || '').toString().toLowerCase(); let valB = (b[colunaOrdenacao] || '').toString().toLowerCase(); if (valA < valB) return direcaoOrdenacao === 'asc' ? -1 : 1; if (valA > valB) return direcaoOrdenacao === 'asc' ? 1 : -1; return 0; } return b.id - a.id; });
+            tbody.innerHTML = '';
+            processosExibicao.forEach(p => {
+                const numZap = p.telefone ? p.telefone.replace(/\D/g, '') : ''; const linkZap = numZap ? `<a href="https://wa.me/${numZap.length <= 11 ? '55'+numZap : numZap}" target="_blank" class="text-green-500 ml-2">📱</a>` : '';
+                let celulaAgenda = `<button onclick="abrirModalTarefa(${p.id})" class="text-xs text-purple-600 border py-1 px-2 rounded hover:bg-purple-50 transition">➕ Agendar</button>`;
+                if (p.tarefa && (p.tarefa.texto || p.tarefa.data)) { const emAlerta = p.tarefa.alerta && momentoAtual >= new Date(p.tarefa.alerta).getTime(); celulaAgenda = `<div onclick="abrirModalTarefa(${p.id})" class="text-xs border-2 ${emAlerta ? 'border-red-500 bg-red-100' : 'border-yellow-300 bg-yellow-50'} py-1 px-2 rounded cursor-pointer text-center w-[130px] mx-auto overflow-hidden"><div class="font-bold ${emAlerta ? 'text-red-700 animate-pulse' : 'text-yellow-800'}">${emAlerta ? '🚨 ESTOUROU!' : '📅 Agendado'}</div><div class="truncate text-[10px] font-semibold">${p.tarefa.texto || ''}</div></div>`; }
+                let desc = p.descricaoMovimentacao || 'Não capturado'; let classeLinha = p.atualizou ? "bg-red-100 border-b border-red-200" : "border-b hover:bg-gray-50";
+                if (p.atualizou) { desc = `<div><span class="bg-red-600 text-white px-2 rounded text-xs font-bold animate-pulse">NOVO!</span> <button onclick="marcarVisto(${p.id})" class="text-xs text-red-700 underline ml-2">Limpar</button></div> <span class="font-bold text-red-900 mt-1 block">${desc}</span>`; }
+                tbody.innerHTML += `<tr class="${classeLinha}"><td class="p-3 font-medium">${p.nome} ${linkZap}</td><td class="p-3 text-sm text-gray-500">${p.classeAcao || '-'}</td><td class="p-3"><a href="${p.url}" target="_blank" class="text-blue-600 underline">${p.numero}</a></td><td class="p-3 text-sm">${p.dataUltimaMovimentacao}</td><td class="p-3 text-sm opacity-80">${p.ultimaVarredura || '-'}</td><td class="p-3 text-center align-middle">${celulaAgenda}</td><td class="p-3 text-sm">${desc}</td><td class="p-3 text-right"><button onclick="abrirModalEditar(${p.id})" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm transition">Editar</button></td></tr>`;
+            });
+        }
+
+        async function dispararVarredura() { document.getElementById('btnVarredura').innerText = '⏳ Conectando...'; await fetch('/api/varredura', { method: 'POST', headers: obterHeaders() }); carregarStatusRobo(); }
+        async function salvarProcesso() {
+            const nome = document.getElementById('nomeCliente').value.trim(); const link = document.getElementById('linkProcesso').value.trim();
+            if (!nome || !link) return alert("⚠️ Atenção: Por favor, preencha o Nome e o Link.");
+            document.getElementById('btnSalvarProcesso').innerText = '⏳ Salvando...';
+            const response = await fetch('/api/processos', { method: 'POST', headers: obterHeaders(), body: JSON.stringify({ nome: nome, telefone: document.getElementById('telefoneCliente').value.trim(), url: link }) });
+            if (response.ok) { fecharModalCadastro(); carregarProcessos(); } else { alert((await response.json()).message || "Erro."); }
+            document.getElementById('btnSalvarProcesso').innerText = 'Salvar';
+        }
+        async function salvarEdicao() { await fetch(`/api/processos/${document.getElementById('editId').value}`, { method: 'PUT', headers: obterHeaders(), body: JSON.stringify({ nome: document.getElementById('editNome').value, telefone: document.getElementById('editTelefone').value, url: document.getElementById('editUrl').value }) }); fecharModalEditar(); carregarProcessos(); }
+        async function excluirProcesso() { if (confirm("Quer deixar de monitorar esse processo?")) { await fetch(`/api/processos/${document.getElementById('editId').value}`, { method: 'DELETE', headers: obterHeaders() }); fecharModalEditar(); carregarProcessos(); } }
+        async function marcarVisto(id) { await fetch(`/api/processos/${id}/visto`, { method: 'POST', headers: obterHeaders() }); carregarProcessos(); }
+
+        carregarProcessos(); carregarStatusRobo(); 
+        setInterval(() => { carregarStatusRobo(); if (!roboEstavaRodando) carregarProcessos(); }, 3000); 
+    </script>
+</body>
+</html>
