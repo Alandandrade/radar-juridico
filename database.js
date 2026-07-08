@@ -35,7 +35,7 @@ async function inicializarBanco() {
     const adminExist = await db.get("SELECT id FROM usuarios WHERE nivel_acesso = 'admin'");
     if (!adminExist) {
         const hoje = new Date().toLocaleDateString('pt-BR');
-        await db.run(`INSERT INTO usuarios (usuario, senha, nivel_acesso, tipo_conta, limite_processos, mensalidade_em_dia, data_cadastro) VALUES ('admin', 'admin123', 'admin', 'pro', 9999, 1, ?)`, [hoje]);
+        await db.run(`INSERT INTO usuarios (usuario, senha, nivel_acesso, tipo_conta, limite_processos, mensalidade_em_dia, data_cadastro) VALUES ('admin', 'coquinho2024', 'admin', 'pro', 9999, 1, ?)`, [hoje]);
     }
 
     if (fs.existsSync('usuarios.json')) {
